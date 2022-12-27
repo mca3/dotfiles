@@ -1,0 +1,161 @@
+#!/usr/bin/env luajit
+
+-- This implements just enough of Xlib API for LuaJIT FFI so that one could set
+-- the root window title, which this does by running everything specified by
+-- ~/.config/statusline.lua every 10 seconds.
+
+local ffi = require("ffi")
+local blocks = dofile(os.getenv("HOME") .. "/.config/statusline.lua")
+
+-- I have no idea if any of this is right, a lot of it was pulled straight from
+-- Xlib.h and I fumbled around untiil LuaJIT didn't complain anymore.
+ffi.cdef [[
+typedef unsigned long XID;
+typedef char *XPointer;
+typedef struct {} XExtData;
+typedef unsigned long VisualID;
+typedef void *GC;
+
+typedef XID Window;
+typedef XID Colormap;
+
+struct _XPrivate;
+struct _XDisplay;
+struct _XrmHashBucketRec;
+
+typedef struct {
+	XExtData *ext_data;	/* hook for extension to hang data */
+	VisualID visualid;	/* visual id of this visual */
+	int class;		/* class of screen (monochrome, etc.) */
+	unsigned long red_mask, green_mask, blue_mask;	/* mask values */
+	int bits_per_rgb;	/* log base 2 of distinct color values */
+	int map_entries;	/* color map entries */
+} Visual;
+
+typedef struct {
+	int depth;		/* this depth (Z) of the depth */
+	int nvisuals;		/* number of Visual types at this depth */
+	Visual *visuals;	/* list of visuals possible at this depth */
+} Depth;
+
+typedef struct {
+	XExtData *ext_data;	/* hook for extension to hang data */
+	struct _XDisplay *display;/* back pointer to display structure */
+	Window root;		/* Root window id. */
+	int width, height;	/* width and height of screen */
+	int mwidth, mheight;	/* width and height of  in millimeters */
+	int ndepths;		/* number of depths possible */
+	Depth *depths;		/* list of allowable depths on the screen */
+	int root_depth;		/* bits per pixel */
+	Visual *root_visual;	/* root visual */
+	GC default_gc;		/* GC for the root root visual */
+	Colormap cmap;		/* default color map */
+	unsigned long white_pixel;
+	unsigned long black_pixel;	/* White and Black pixel values */
+	int max_maps, min_maps;	/* max and min color maps */
+	int backing_store;	/* Never, WhenMapped, Always */
+	int save_unders;
+	long root_input_mask;	/* initial root input mask */
+} Screen;
+
+typedef struct {
+	XExtData *ext_data;
+	int depth;
+	int bits_per_pixel;
+	int scanline_pad;
+} ScreenFormat;
+
+typedef struct {
+	XExtData *ext_data;	/* hook for extension to hang data */
+	struct _XPrivate *private1;
+	int fd;			/* Network socket. */
+	int private2;
+	int proto_major_version;/* major version of server's X protocol */
+	int proto_minor_version;/* minor version of servers X protocol */
+	char *vendor;		/* vendor of the server hardware */
+        XID private3;
+	XID private4;
+	XID private5;
+	int private6;
+	XID (*resource_alloc)(	/* allocator function */
+		struct _XDisplay*
+	);
+	int byte_order;		/* screen byte order, LSBFirst, MSBFirst */
+	int bitmap_unit;	/* padding and data requirements */
+	int bitmap_pad;		/* padding requirements on bitmaps */
+	int bitmap_bit_order;	/* LeastSignificant or MostSignificant */
+	int nformats;		/* number of pixmap formats in list */
+	ScreenFormat *pixmap_format;	/* pixmap format list */
+	int private8;
+	int release;		/* release of the server */
+	struct _XPrivate *private9, *private10;
+	int qlen;		/* Length of input event queue */
+	unsigned long last_request_read; /* seq number of last event read */
+	unsigned long request;	/* sequence number of last request. */
+	XPointer private11;
+	XPointer private12;
+	XPointer private13;
+	XPointer private14;
+	unsigned max_request_size; /* maximum number 32 bit words in request*/
+	struct _XrmHashBucketRec *db;
+	int (*private15)(
+		struct _XDisplay*
+		);
+	char *display_name;	/* "host:display" string used on this connect*/
+	int default_screen;	/* default screen for operations */
+	int nscreens;		/* number of screens on this server*/
+	Screen *screens;	/* pointer to list of screens */
+	unsigned long motion_buffer;	/* size of motion buffer */
+	unsigned long private16;
+	int min_keycode;	/* minimum defined keycode */
+	int max_keycode;	/* maximum defined keycode */
+	XPointer private17;
+	XPointer private18;
+	int private19;
+	char *xdefaults;	/* contents of defaults from server */
+	/* there is more to this structure, but it is private to Xlib */
+} Display;
+
+Display *XOpenDisplay(char*);
+int XStoreName(Display*, Window, const char*);
+int XSync(Display*, int);
+int XCloseDisplay(Display*);
+
+unsigned int sleep(unsigned int seconds);
+]]
+
+local xlib = ffi.load("X11")
+
+-- Initialize the display
+local dpy = xlib.XOpenDisplay(nil)
+if not dpy then
+	error("cannot open display")
+end
+
+-- Grab the root window using private struct fields; this is normally done with
+-- a macro
+local root = dpy.screens[dpy.default_screen].root
+
+-- Block loop
+local tbl = {}
+local res, _res
+while true do
+	-- Iterate over all of the blocks, save the result
+	for i, block in ipairs(blocks) do
+		tbl[i] = block()
+	end
+
+	-- Tell Xorg if it has updated
+	_res = res
+	res = table.concat(tbl, " | ")
+	if res ~= _res then
+		xlib.XStoreName(dpy, root, table.concat(tbl, " | "))
+		xlib.XSync(dpy, 0)
+	end
+
+	-- Wait some time
+	ffi.C.sleep(10)
+end
+
+-- Unreachable but for good measure
+xlib.XCloseDisplay(dpy)
