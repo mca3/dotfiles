@@ -1,0 +1,18 @@
+#!/usr/bin/env lua
+package.path = package.path .. ";" .. os.getenv("HOME") .. "/.local/lib/lua/?.lua"
+
+local theme = assert(require("mca.theme")())
+
+-- Write .Xresources
+local Xreskeys = {}
+for i=0,15 do
+	Xreskeys[#Xreskeys+1] = string.format("*color%d: #%s", i, theme["color" .. tostring(i)])
+end
+for _, i in pairs({"background", "foreground"}) do
+	Xreskeys[#Xreskeys+1] = string.format("*%s: #%s", i, theme[i])
+end
+Xreskeys[#Xreskeys+1] = ""
+
+local h = assert(io.open(os.getenv("HOME") .. "/.config/Xresources", "w"))
+h:write(table.concat(Xreskeys, "\n"))
+h:close()
