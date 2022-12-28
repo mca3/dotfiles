@@ -25,7 +25,7 @@ end
 -- Returns the battery percentage with a + indicating charging.
 local function battery()
 	local b = read(string.format("/sys/class/power_supply/%s/capacity", bat), "*n")
-	local s = read(string.format("/sys/class/power_supply/%s/status", bat), "*n")
+	local s = read(string.format("/sys/class/power_supply/%s/status", bat), "*l")
 	return string.format("%d%%%s", b, s == "Charging" and "+" or "")
 end
 
