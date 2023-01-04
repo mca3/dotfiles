@@ -3,6 +3,27 @@ package.path = package.path .. ";" .. os.getenv("HOME") .. "/.local/lib/lua/?.lu
 
 local theme = assert(require("mca.theme")())
 
+local function home(path)
+	return os.getenv("HOME") .. "/" .. path
+end
+
+local function write_tmpl(path, dest)
+	local r = assert(io.open(path, "r"))
+	local w = assert(io.open(dest, "w"))
+
+	for line in r:lines("*l") do
+		local line = line:gsub("{(.-)}", function(c)
+			return theme[c]
+		end)
+
+		w:write(line)
+		w:write("\n")
+	end
+
+	r:close()
+	w:close()
+end
+
 -- Write .Xresources
 local Xreskeys = {}
 for i=0,15 do
@@ -16,6 +37,9 @@ Xreskeys[#Xreskeys+1] = ""
 local h = assert(io.open(os.getenv("HOME") .. "/.config/Xresources", "w"))
 h:write(table.concat(Xreskeys, "\n"))
 h:close()
+
+-- Write dunstrc
+write_tmpl(home(".config/dunst/dunstrc.tmpl"), home(".config/dunst/dunstrc"))
 
 -- Write ~/.config/wall
 -- os.execute is essentially system(3), so we're going to use this to our advantage.

@@ -1,7 +1,8 @@
 # These files are here to ensure they don't get accidentally committed.
-/.cache
-/.local/state
 *~
-/.zcompdump
+/.cache
+/.config/dunst/dunstrc
 /.local/etc/sv/*/supervise
+/.local/state
+/.zcompdump
 /go
