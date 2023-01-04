@@ -1,0 +1,110 @@
+#!/usr/bin/env luajit
+
+-- Creates a Windows bitmap (.bmp) file from two colors and a specified pattern.
+-- Used primarily by apply-theme.
+-- Supply a pattern to use a one that isn't 'x'.
+-- See ~/.local/share/mca/patterns for available patterns.
+package.path = package.path .. ";" .. os.getenv("HOME") .. "/.local/lib/lua/?.lua"
+
+local theme = require("mca.theme")()
+
+-- Turnable knobs
+local WIDTH = 8
+local HEIGHT = 8
+local COLOR1 = theme.desktop
+local COLOR2 = theme.desktopalt
+
+-- You shouldn't touch this
+local patn_path = os.getenv("HOME") .. "/.local/share/mca/patterns"
+COLOR1 = tonumber("0x" .. COLOR1)
+COLOR2 = tonumber("0x" .. COLOR2)
+
+-- Programmer's note: this is not going to work on Windows.
+-- Why? There is no way to set the output mode of stdout in stock Lua; I know I
+-- have FFI, but I don't want to use it; I want to limit my uses of it as much
+-- as possible actually to keep things portable between implementations.
+--
+-- However, the output mode *only* matters on Windows because of CRLF newlines,
+-- which are fudged into LF newlines, a la UNIX, and as such UNIX has no such
+-- conversion applied to it.
+--
+-- V
+
+local bit = require("bit")
+
+local band, blsh, brsh = bit.band, bit.lshift, bit.rshift
+
+local function bytes(num, n, lendian)
+	-- Bitmap fields are little endian, but I plan to reuse this function.
+	if lendian ~= nil and not lendian then
+		num = bit.bswap(num)
+	end
+
+	local buf = {}
+
+	for i=0,n-1 do
+		-- Mask out 8 bits at a time
+		buf[i+1] = string.char(band(brsh(num, i*8), 0xFF))
+	end
+
+	return table.concat(buf, "")
+end
+
+local function write(...)
+	local n = select("#", ...)
+
+	for i=1,n do
+		local v = select(i, ...)
+		if type(v) == "string" then
+			io.write(v)
+		elseif type(v) == "number" then
+			io.write(string.char(v))
+		end
+	end
+end
+
+-- The fun stops here
+local padding = WIDTH*HEIGHT*3 % 4
+
+-- Bitmap header
+write(0x42, 0x4D)	-- BM identifier
+write(0x3A, 0, 0, 0)	-- Size of header in bytes
+write(0, 0, 0, 0)	-- Reserved
+write(0x36, 0, 0, 0)	-- Start of the bitmap
+
+-- BITMAPINFOHEADER
+write(0x28, 0, 0, 0)
+write(WIDTH, 0, 0, 0)
+write(HEIGHT, 0, 0, 0)
+write(0x01, 0)		-- # of color planes
+write(0x18, 0)		-- Bits per pixel
+write(0, 0, 0, 0)
+write(WIDTH*HEIGHT*3, 0, 0, 0)	-- Size of bitmap data. Should round to nearest 4
+write(0x01, 0, 0, 0)
+write(0x01, 0, 0, 0)
+write(0, 0, 0, 0)	-- This image has no colors
+write(0, 0, 0, 0)	-- But all of them are important
+
+-- Bitmap data
+-- Here we apply colors to a pattern and write the resulting bytes out.
+local function rgb(col)
+	write(bytes(col, 3))
+end
+
+local h = assert(io.open(patn_path .. "/" .. (select(1, ...) or "x"), "r"))
+
+local lines = {}
+
+for line in h:lines() do
+	lines[#lines+1] = line
+end
+
+for i=#lines,1,-1 do
+	local line = lines[i]
+
+	for i=1,#line do
+		local bg = line:sub(i,i) == " "
+		local color = bg and COLOR1 or COLOR2
+		rgb(color)
+	end
+end

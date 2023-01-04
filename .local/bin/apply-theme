@@ -16,3 +16,15 @@ Xreskeys[#Xreskeys+1] = ""
 local h = assert(io.open(os.getenv("HOME") .. "/.config/Xresources", "w"))
 h:write(table.concat(Xreskeys, "\n"))
 h:close()
+
+-- Write ~/.config/wall
+-- os.execute is essentially system(3), so we're going to use this to our advantage.
+os.execute("mkpatnbmp > ~/.config/wall")
+
+-- Reload everything
+
+-- Set the background
+os.execute("feh --bg-tile ~/.config/wall")
+
+-- Reload dwm xresources
+os.execute("pidof dwm >/dev/null && xdotool key super+F5")
