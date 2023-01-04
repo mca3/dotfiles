@@ -1,0 +1,153 @@
+#!/usr/bin/env luajit
+package.path = package.path .. ";" .. os.getenv("HOME") .. "/.local/lib/lua/?.lua"
+
+local term = require("mca.term")
+
+local slideshow = select(1, ...)
+
+local width, height = term.size()
+local cols = math.max(width - 4, 80)
+local startX = math.floor((width / 2) - ((cols - 1) / 2))
+cols = cols - 1
+
+local function strip_ansi(text)
+	local r = text:gsub("\x1b%[.-m", "")
+	return r
+end
+
+local function wrap(text, width, hang)
+	local cur = nil
+	local txt = {}
+
+	for word in text:gmatch("([^%s]+)") do
+		local len = #strip_ansi(word)
+		if (cur and #cur or 0) + len + 1 >= width then
+			txt[#txt+1] = cur
+			cur = (hang and string.rep(" ", hang-1) or nil)
+		end
+
+		cur = (cur or "") .. (cur and " " or "") .. word
+	end
+
+	txt[#txt+1] = cur
+	return txt
+end
+
+local function ansify(text)
+	local r = text:gsub("\\(%a);", function(a)
+		if a == "b" then
+			return "\x1b[1m"
+		elseif a == "d" then
+			return "\x1b[2m"
+		elseif a == "i" then
+			return "\x1b[3m"
+		elseif a == "r" then
+			return "\x1b[0m"
+		end
+
+		return p
+	end)
+	return r
+end
+
+local function read_chunk(h)
+	local line = h:read("*l")
+	local lines = {}
+
+	while line do
+		if line == "" then
+			return lines
+		end
+
+		lines[#lines+1] = line
+		line = h:read("*l")
+	end
+
+	return lines
+end
+
+local function lbuf()
+	local lines = {}
+	return lines, function(line)
+		lines[#lines+1] = line or ""
+	end
+end
+
+local function display_slide(chunks, title)
+	local lines, lprint = lbuf()
+
+	-- Render to a buffer
+	for i, chunk in pairs(chunks) do
+		local hang = nil
+
+		for _, sect in pairs(chunk) do
+			local s = sect:sub(1, 2)
+			local pfmt = s == "` "
+			if s == "- " or s == "> " then
+				hang = 2
+			elseif pfmt then
+				sect = sect:sub(2)
+			end
+
+			for _, tline in pairs(wrap(ansify(sect), cols, hang)) do
+				lprint((pfmt and "    " or "  ") .. tline)
+			end
+		end
+
+		if i ~= #chunks then
+			lprint()
+		end
+	end
+
+	-- Determine start Y
+	local startY = math.floor(2 + ((height) / 2) - (#lines / 2))
+
+	-- Draw!
+	io.stdout:write("\x1b[2J")
+
+	for y, line in pairs(lines) do
+		io.stdout:write(string.format("\x1b[%d;%dH", startY+y-1, startX))
+		io.stdout:write(line)
+	end
+
+	io.stdout:write("\x1b[2;2H\x1b[1m" .. title .. "\x1b[0m")
+
+	io.stdout:flush()
+
+	io.stdin:read("*l")
+end
+
+local title
+local chunks = {}
+
+local h = assert(io.open(slideshow, "r"))
+
+while true do
+	local chunk = read_chunk(h)
+	if #chunk == 0 then
+		if #chunks > 0 then
+			display_slide(chunks, title)
+			chunks = {}
+		end
+
+		break
+	end
+
+	if chunk[1]:sub(1,2) == "# " then
+		if #chunks > 0 then
+			display_slide(chunks, title)
+			chunks = {}
+		end
+
+		title = chunk[1]:sub(3)
+	else
+		local s = chunk[1]:sub(1, 2)
+		if s ~= "- " and s ~= "` " and s ~= "> " then
+			chunk = {table.concat(chunk, " ")}
+		end
+
+		chunks[#chunks+1] = chunk
+	end
+end
+
+io.stdout:write("\x1b[2J\x1b[H")

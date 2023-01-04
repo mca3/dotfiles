@@ -47,11 +47,6 @@ set scrolloff=4
 set lazyredraw updatetime=300
 set splitbelow splitright
 
-" Show trailing whitespace
-" Not as good as something like vim-better-whitespace but very much more
-" performant for a slow computer
-set list listchars=trail:░
-
 cnoreabbrev W! w!
 cnoreabbrev Q! q!
 cnoreabbrev W w
