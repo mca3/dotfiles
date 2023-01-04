@@ -1,0 +1,3 @@
+#!/bin/sh
+export SVDIR="$HOME/.local/etc/sv"
+exec sv "$@"

@@ -6,14 +6,13 @@ fi
 
 xrdb -merge < ~/.config/Xresources
 
-xset r rate 300 20
-setxkbmap -option caps:super
+xset r rate 300 20 &
+setxkbmap -option caps:super &
 
-picom &
-statusline &
+runsvdir ~/.local/etc/sv &
 
-pipewire &
-wireplumber &
-pipewire-pulse &
+# Need to cleanup runit before we're done.
+dbus-run-session dwm
 
-exec dbus-run-session dwm
+usv force-stop ~/.local/etc/sv/*
+usv exit ~/.local/etc/sv/*

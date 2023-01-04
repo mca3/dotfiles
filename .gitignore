@@ -2,3 +2,4 @@
 .cache
 *~
 .zcompdump
+.local/etc/sv/*/supervise
