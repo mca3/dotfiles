@@ -1,0 +1,14 @@
+#!/bin/sh
+
+down() {
+	notify-send -r 70001 Brightness "$(brightnessctl -m set 5%- | cut -d, -f 4)"
+}
+
+up() {
+	notify-send -r 70001 Brightness "$(brightnessctl -m set 5%+ | cut -d, -f 4)"
+}
+
+case "$1" in
+	down|up) "$1" "$@" ;;
+	*) exit 1 ;;
+esac
