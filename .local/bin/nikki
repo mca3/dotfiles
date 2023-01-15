@@ -1,0 +1,150 @@
+#!/bin/sh -e
+
+: ${DIARYDIR:="$HOME/doc/diary"}
+
+COLOR=yes
+# TODO: Detect noninteractive
+if [ -n "$COLOR" ]; then
+	COLOR_INFO="\033[94m"
+	COLOR_LIST="\033[90;1m"
+	COLOR_ASK="\033[93m"
+	COLOR_ERR="\033[91m"
+	COLOR_RESET="\033[0m"
+fi
+
+# Wrappers
+_git() {
+	git -C "$DIARYDIR" "$@"
+}
+
+encrypt() {
+	read gpg_id < "$DIARYDIR/.gpg-id"
+	gpg -o "$tgt" -r "$gpg_id" -e "$1"
+}
+
+secdel() {
+	if command -v shred >/dev/null 2>&1; then
+		shred "$1"
+	fi
+	rm "$1"
+}
+
+# Util
+die() {
+	printf "%b !! %b%s\n" "$COLOR_ERR" "$COLOR_RESET" "$1"
+	exit 1
+}
+
+info() {
+	printf "%b -> %b%s\n" "$COLOR_INFO" "$COLOR_RESET" "$1"
+}
+
+# $1: var name, $2: prompt
+prompt() {
+	printf "%b%s? %b" "$COLOR_ASK" "$2" "$COLOR_RESET"
+	eval "read -r $1"
+}
+
+yn() {
+	printf "%b%s [y/N]? %b" "$COLOR_ASK" "$1" "$COLOR_RESET"
+	read -r _
+	if [ "$_" = "y" ]; then
+		return 1
+	else
+		return 0
+	fi
+}
+
+init() {
+	# Ensure everything is there
+	[ ! -e "$DIARYDIR" ] && mkdir "$DIARYDIR"
+	_git init
+
+	# Configure git
+	_git config user.name "$(id -nu)"
+	_git config user.email "$(id -nu)@$(hostname)"
+
+	# Configure gpg
+	info "The following is a list of GPG secret keys. Pick one to encrypt your diary with."
+	gpg -K || die "couldn't call gpg"
+	prompt key "GPG key"
+
+	[ -z "$key" ] && die "cancelled"
+
+	printf '%s\n' "$key" > "$DIARYDIR/.gpg-id"
+	_git add .gpg-id
+	_git commit -m "Set GPG key"
+
+	# TODO: Test GPG?
+
+	info "All set!"
+}
+
+new() {
+	if [ -e "$DIARYDIR/.stage" ]; then
+		if ! yn "Resume?"; then
+			info "nikki cannot continue until you finish this entry. Delete or resume."
+			if yn "Delete file?"; then
+				rm -v "$DIARYDIR/.stage"
+			else
+				die "cancelled"
+			fi
+		fi
+	fi
+
+	if ! "$EDITOR" "$DIARYDIR/.stage"; then
+		die "Editor exited uncleanly."
+	fi
+
+	# Encrypt and commit.
+	now="$(date +%s)"
+	tgt="$DIARYDIR/$now.gpg"
+	if ! encrypt "$DIARYDIR/.stage" "$tgt"; then
+		die "Failed to encrypt. No data has been lost."
+	fi
+
+	secdel "$DIARYDIR/.stage"
+	_git add "$DIARYDIR/$now.gpg"
+	_git commit -m "New entry: $now"
+}
+
+edit() {
+	:
+}
+
+delete() {
+	:
+}
+
+list() {
+	for i in "$DIARYDIR"/*.gpg; do
+		i="${i##*/}"
+		i="${i%%.gpg}"
+		printf '%b%s%b: %s\n' "$COLOR_LIST" "$i" "$COLOR_RESET" "$(date --date="@$i")"
+	done | sort
+}
+
+cmd="$1"
+if [ -z "$cmd" ]; then
+	new
+	exit
+fi
+
+case "$cmd" in
+	new|view|edit|delete|list) "$cmd" "$@" ;;
+	l|ls) list "$@" ;;
+	v) view "$@" ;;
+	e) edit "$@" ;;
+	d|rm) delete "$@" ;;
+	*)
+		printf "%s" "nikki, a diary script
+usage: nikki [<cmd> ...]
+commands:
+new (default): create a new entry
+view: view an entry
+edit: edit an entry
+delete: delete an entry
+list: list all entries
+"
+		exit 1
+esac
