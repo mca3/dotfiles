@@ -1,9 +1,5 @@
 #!/bin/sh
 
-if [ -z "$XDG_RUNTIME_DIR" ]; then
-	export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-fi
-
 if [ ! -e "~/.config/Xresources" ]; then
 	# apply-theme hasn't been run, so run it
 	# Many applications depend on their config files existing, and a lot of
@@ -23,7 +19,7 @@ setxkbmap -option caps:super &
 runsvdir ~/.local/etc/sv &
 
 # Need to cleanup runit before we're done.
-dbus-run-session dwm
+dbus-run-session -- dwm
 
 usv force-stop ~/.local/etc/sv/*
 usv exit ~/.local/etc/sv/*

@@ -46,6 +46,7 @@ write_tmpl(home(".config/dunst/dunstrc.tmpl"), home(".config/dunst/dunstrc"))
 os.execute("mkpatnbmp > ~/.config/wall")
 
 -- Reload everything
+os.execute("xrdb < ~/.config/Xresources")
 
 -- Set the background
 os.execute("feh --bg-tile ~/.config/wall")
