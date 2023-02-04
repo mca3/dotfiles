@@ -1,0 +1,3 @@
+#!/bin/sh -e
+
+awk '/^Channel/ { print $2 }' ~/.mbsyncrc | parallel --will-cite -j0 -v --bar mbsync
