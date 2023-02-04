@@ -1,0 +1,31 @@
+# Copy this file to ~/.config/mailconf and modify as you see fit.
+# Generate mbsync and aerc configs by running mailconf (the program) and then
+# sync email by running "mbsync -a".
+
+# Example gmail configuration
+account primary
+user myemail@gmail.com
+
+# remove s for unsecure connection
+smtps smtp.gmail.com
+imaps imap.gmail.com
+
+# %s is replaced with the username
+# RFC 5322 form
+from my name <%s>
+
+# is your default inbox not named Inbox? change the default inbox name then.
+# inbox INBOX
+
+# %s is replaced with the identifier you set with the account line (primary in this case)
+# command will be expanded by the shell when ran by aerc.
+passcmd pass mail/smtp/%s
+
+# specify mbsync folders here. if not specified, defaults to *.
+folders * ![Gmail]* "[Gmail]/Sent Mail" "[Gmail]/Starred" "[Gmail]/All Mail"
+
+# You can chain these as much as you want, a new account is configured by the
+# account key. (account ...)
+
+# account work
+# ...

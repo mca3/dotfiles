@@ -10,6 +10,8 @@ if [ ! -e "~/.config/Xresources" ]; then
 	apply-theme
 fi
 
+export $(dbus-launch)
+
 xrdb -merge < ~/.config/Xresources
 feh --bg-tile ~/.config/wall
 
@@ -19,7 +21,7 @@ setxkbmap -option caps:super &
 runsvdir ~/.local/etc/sv &
 
 # Need to cleanup runit before we're done.
-dbus-run-session -- dwm
+dwm
 
 usv force-stop ~/.local/etc/sv/*
 usv exit ~/.local/etc/sv/*

@@ -1,0 +1,118 @@
+#!/usr/bin/env lua
+
+-- Configures isync and aerc from ~/.config/mailconf.
+
+local cfg_base = os.getenv("XDG_CONFIG_DIR") or (os.getenv("HOME") .. "/.config")
+local cfg = cfg_base .. "/mailconf"
+
+local cfg_mbsync = os.getenv("MBSYNCRC") or (os.getenv("HOME") .. "/.mbsyncrc")
+local cfg_aerc = (cfg_base or os.getenv("HOME")) .. "/aerc/accounts.conf"
+
+local format = string.format
+local accs = {}
+
+local accname = ""
+local acc = {}
+
+local function write_mbsync(h, acc)
+	h:write(format("# BEGIN %s\n", acc.name))
+
+	-- IMAP information
+	h:write(format("IMAPAccount %s\n", acc.name))
+	h:write(format("Host %s\n", acc["imaps"] or acc["imap"]))
+	h:write(format("User %s\n", acc["user"]))
+	h:write(format("PassCmd %q\n", format(acc["passcmd"], acc.name)))
+
+	if acc["imaps"] then
+		h:write("SSLType IMAPS\n")
+	end
+	h:write("\n")
+
+	-- IMAP store
+	h:write(format("IMAPStore %s-remote\n", acc.name))
+	h:write(format("Account %s\n", acc.name))
+	h:write("\n")
+
+	-- Mailbox store
+	h:write(format("MaildirStore %s-local\n", acc.name))
+	h:write("SubFolders Verbatim\n")
+	h:write(format("Path ~/mail/%s/\n", acc.name))
+	h:write(format("Inbox ~/mail/%s/%s\n", acc.name, acc["inbox"] or "Inbox"))
+	h:write("\n")
+
+	-- Channel
+	h:write(format("Channel %s\n", acc.name))
+	h:write(format("Far :%s-remote:\n", acc.name))
+	h:write(format("Near :%s-local:\n", acc.name))
+	h:write(format("Patterns %s\n", acc["folders"] or "*"))
+	h:write("Create Both\n")
+	h:write("Expunge Both\n")
+	h:write("SyncState *\n")
+
+	h:write(format("# END %s\n", acc.name))
+	h:write("\n")
+
+	-- Ensure maildir exists
+	os.execute(format("mkdir -p ~/mail/%s", acc.name))
+end
+
+local function write_aerc(h, acc)
+	h:write(format("# BEGIN %s\n", acc.name))
+
+	h:write(format("[%s]\n", acc.name))
+
+	h:write(format("from = %s\n", format(acc.from, acc.user)))
+	h:write(format("source = maildir://~/mail/%s\n", acc.name))
+	h:write(format("default = %s\n", acc.inbox or "Inbox"))
+	h:write("copy-to = Sent\n")
+
+	if acc.smtps then
+		h:write(format("outgoing = %s\n", "smtps://" .. acc.smtps))
+	else
+		h:write(format("outgoing = %s\n", "smtp://" .. acc.smtp))
+	end
+
+	h:write(format("outgoing-cred-cmd = %q\n", format(acc.passcmd, acc.name)))
+	
+
+	h:write(format("# END %s\n", acc.name))
+	h:write("\n")
+end
+
+-- Read configuration file
+local h = io.open(cfg, "r")
+
+for line in h:lines() do
+	local k, v = line:match("^(%w+)%s+(.*)$")
+	if k ~= nil then
+		k = k:lower()
+
+		if k == "account" then
+			if acc.name and #acc.name > 0 then
+				accs[#accs+1] = acc
+			end
+			acc = {}
+			acc.name = v
+		else
+			acc[k] = v
+		end
+	end
+end
+
+h:close()
+
+if acc.name and #acc.name > 0 then
+	accs[#accs+1] = acc
+end
+
+-- Open configuration files
+local mbfd = io.open(cfg_mbsync, "w")
+local aefd = io.open(cfg_aerc, "w")
+
+for _, v in pairs(accs) do
+	write_mbsync(mbfd, v)
+	write_aerc(aefd, v)
+end
+
+mbfd:close()
+aefd:close()
