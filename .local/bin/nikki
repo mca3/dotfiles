@@ -96,6 +96,10 @@ new() {
 		die "Editor exited uncleanly."
 	fi
 
+	if [ ! -e "$DIARYDIR/.stage" ]; then
+		die "Cancelled."
+	fi
+
 	# Encrypt and commit.
 	now="$(date +%s)"
 	tgt="$DIARYDIR/$now.gpg"

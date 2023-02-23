@@ -28,6 +28,9 @@ call plug#begin()
 " QoL
 Plug 'tpope/vim-surround'
 
+" UI
+Plug 'junegunn/goyo.vim'
+
 call plug#end()
 
 let mapleader=","
@@ -42,7 +45,7 @@ set magic
 set mouse=a
 set nofoldenable
 set nohlsearch
-set nowrap
+set wrap showbreak=>\
 set scrolloff=4
 set lazyredraw updatetime=300
 set splitbelow splitright
@@ -53,3 +56,6 @@ cnoreabbrev W w
 cnoreabbrev Q q
 
 command! Fws :%s/\s\+$//e
+
+autocmd FileType markdown,text set tw=80
+autocmd BufRead,BufNewFile $HOME/doc/diary/.stage Goyo

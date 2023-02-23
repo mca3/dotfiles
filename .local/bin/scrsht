@@ -1,0 +1,31 @@
+#!/bin/sh -e
+# Creates a screenshot as specified by an argument or shows a prompt.
+
+. ~/.local/lib/sh/menu
+
+choice() {
+	printf '%s\n' "fullscreen" "select" | menu scrsht
+}
+
+# Calls choice if there is no argument specified, but otherwise uses the
+# argument as the value for choice.
+c="$1"
+if [ -z "$c" ]; then
+	c="$(choice)"
+fi
+
+name=~/pic/"$(date "+%Y-%m-%d")_$c.png"
+
+case "$c" in
+	fullscreen)
+		maim -u "$name"
+		;;
+	select)
+		maim -u -s "$name"
+		;;
+	*)
+		exit 1
+		;;
+esac
+
+notify-send "scrsht" "Saved to $name."

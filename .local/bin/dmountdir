@@ -1,0 +1,12 @@
+#!/bin/sh -e
+
+if [ -n "$1" ]; then
+	# Hack, but it works
+	ex="
+/media/$1"
+fi
+
+exec dmenu -p "mount dir" -l 5 <<EOF
+/mnt
+/media$ex
+EOF

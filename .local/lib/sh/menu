@@ -1,0 +1,12 @@
+#!/bin/sh
+
+: "${DMENU:="dmenu"}"
+
+menu() {
+	_="$1"
+	if [ -z "$_" ]; then
+		_="menu"
+	fi
+
+	"$DMENU" -p "$_" -l 5
+}

@@ -1,0 +1,13 @@
+#!/bin/sh -e
+
+choice="$(simple-mtpfs -l | dmenu -p dmount.mtp -l 5)"
+id="${choice%%:*}"
+
+dir="$(dmountdir "mtp")"
+
+set +e
+
+out="$(doas simple-mtpfs --device "$id" -o uid="$(id -u)",gid="$(id -g)",allow_other,umask=117 "$dir" 2>&1)"
+if [ "$?" -ne 0 ]; then
+	notify-send "dmount.mtp error" "$out"
+fi
