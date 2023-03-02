@@ -1,0 +1,5 @@
+#!/bin/sh
+# --exit-idle-time=-1: Chromebook speakers crackle (sometimes loudly) every
+#   time PulseAudio starts. PulseAudio exits after a period or time or
+#   seemingly after wakeup from suspend. Disallow that from happening.
+exec pulseaudio --exit-idle-time=-1

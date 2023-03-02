@@ -1,0 +1,24 @@
+#!/bin/sh
+
+send() {
+	notify-send -r 70002 Volume "$1"
+}
+
+down() {
+	amount="${1:-5}"
+	send "$(pamixer -d "$amount" --get-volume-human)"
+}
+
+up() {
+	amount="${1:-5}"
+	send "$(pamixer -i "$amount" --get-volume-human)"
+}
+
+mute() {
+	send "$(pamixer -t --get-volume-human)"
+}
+
+case "$1" in
+	down|up|mute) "$1" "$2" ;;
+	*) exit 1 ;;
+esac

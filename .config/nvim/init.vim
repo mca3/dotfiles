@@ -7,6 +7,8 @@ endif
 set nocompatible
 
 " Disable loading some builtin plugins
+" Probably doesn't actually help anything asides from startup times but my
+" computer sucks so I'll do what I can.
 let g:loaded_matchparen        = 1
 let g:loaded_matchit           = 1
 let g:loaded_logiPat           = 1
@@ -18,7 +20,7 @@ let g:loaded_zipPlugin         = 1
 let g:loaded_2html_plugin      = 1
 let g:loaded_shada_plugin      = 1
 let g:loaded_spellfile_plugin  = 1
-let g:loaded_netrw             = 1
+" let g:loaded_netrw             = 1
 let g:loaded_netrwPlugin       = 1
 let g:loaded_tutor_mode_plugin = 1
 let g:loaded_remote_plugins    = 1
@@ -59,3 +61,6 @@ command! Fws :%s/\s\+$//e
 
 autocmd FileType markdown,text set tw=80
 autocmd BufRead,BufNewFile $HOME/doc/diary/.stage Goyo
+
+autocmd FileType tex inoremap ,.ul \begin{itemize}<CR><TAB><CR>\end{itemize}<Up>
+autocmd FileType tex inoremap ,.i \item{}<Left>

@@ -1,8 +1,9 @@
 export PATH="$HOME/.local/bin:$PATH"
 
+export BROWSER="firefox-esr"
 export EDITOR="nvim"
-export VISUAL="nvim"
 export TERMINAL="st"
+export VISUAL="nvim"
 
 # %(?..!%?): display !errcode if errcode is set
 # %(1j.%%j): display &jobs if there are any background tasks
