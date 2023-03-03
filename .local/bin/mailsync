@@ -1,3 +1,13 @@
 #!/bin/sh -e
 
-awk '/^Channel/ { print $2 }' ~/.mbsyncrc | parallel --will-cite -j0 -v --bar mbsync
+syncmail() {
+	mbsync "$1"
+	NOTMUCH_PROFILE="$1" notmuch new --quiet
+}
+
+# shellcheck disable=SC2013 # This is intentional.
+for acc in $(awk '/^Channel/ { print $2 }' ~/.mbsyncrc); do
+	syncmail "$acc" &
+done
+
+wait

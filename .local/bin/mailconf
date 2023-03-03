@@ -14,69 +14,88 @@ local accs = {}
 local accname = ""
 local acc = {}
 
+local function writefln(h, s, ...)
+	return h:write(format(s.."\n", ...))
+end
+
 local function write_mbsync(h, acc)
-	h:write(format("# BEGIN %s\n", acc.name))
+	writefln(h, "# BEGIN %s", acc.name)
 
 	-- IMAP information
-	h:write(format("IMAPAccount %s\n", acc.name))
-	h:write(format("Host %s\n", acc["imaps"] or acc["imap"]))
-	h:write(format("User %s\n", acc["user"]))
-	h:write(format("PassCmd %q\n", format(acc["passcmd"], acc.name)))
+	writefln(h, "IMAPAccount %s", acc.name)
+	writefln(h, "Host %s", acc["imaps"] or acc["imap"])
+	writefln(h, "User %s", acc["user"])
+	writefln(h, "PassCmd %q", format(acc["passcmd"], acc.name))
 
 	if acc["imaps"] then
-		h:write("SSLType IMAPS\n")
+		writefln(h, "SSLType IMAPS")
 	end
-	h:write("\n")
+	writefln(h, "")
 
-	-- IMAP store
-	h:write(format("IMAPStore %s-remote\n", acc.name))
-	h:write(format("Account %s\n", acc.name))
-	h:write("\n")
+	-- IMAP receiving end
+	writefln(h, "IMAPStore %s-remote", acc.name)
+	writefln(h, "Account %s", acc.name)
+	writefln(h, "")
 
-	-- Mailbox store
-	h:write(format("MaildirStore %s-local\n", acc.name))
-	h:write("SubFolders Verbatim\n")
-	h:write(format("Path ~/mail/%s/\n", acc.name))
-	h:write(format("Inbox ~/mail/%s/%s\n", acc.name, acc["inbox"] or "Inbox"))
-	h:write("\n")
+	-- Mailbox store (storage end)
+	writefln(h, "MaildirStore %s-local", acc.name)
+	writefln(h, "SubFolders Verbatim")
+	writefln(h, "Path ~/mail/%s/", acc.name)
+	writefln(h, "Inbox ~/mail/%s/%s", acc.name, acc["inbox"] or "Inbox")
+	writefln(h, "")
 
 	-- Channel
-	h:write(format("Channel %s\n", acc.name))
-	h:write(format("Far :%s-remote:\n", acc.name))
-	h:write(format("Near :%s-local:\n", acc.name))
-	h:write(format("Patterns %s\n", acc["folders"] or "*"))
-	h:write("Create Both\n")
-	h:write("Expunge Both\n")
-	h:write("SyncState *\n")
+	writefln(h, "Channel %s", acc.name)
+	writefln(h, "Far :%s-remote:", acc.name)
+	writefln(h, "Near :%s-local:", acc.name)
+	writefln(h, "Patterns %s", acc["folders"] or "*")
+	writefln(h, "Create Both")
+	writefln(h, "Expunge Both")
+	writefln(h, "SyncState *")
 
-	h:write(format("# END %s\n", acc.name))
-	h:write("\n")
+	writefln(h, "# END %s", acc.name)
+	writefln(h, "")
 
 	-- Ensure maildir exists
 	os.execute(format("mkdir -p ~/mail/%s", acc.name))
 end
 
 local function write_aerc(h, acc)
-	h:write(format("# BEGIN %s\n", acc.name))
+	writefln(h, "# BEGIN %s", acc.name)
 
-	h:write(format("[%s]\n", acc.name))
+	writefln(h, "[%s]", acc.name)
 
-	h:write(format("from = %s\n", format(acc.from, acc.user)))
-	h:write(format("source = maildir://~/mail/%s\n", acc.name))
-	h:write(format("default = %s\n", acc.inbox or "Inbox"))
-	h:write("copy-to = Sent\n")
+	writefln(h, "from = %s", format(acc.from, acc.user))
+	writefln(h, "source = notmuch://~/mail/%s", acc.name)
+	writefln(h, "maildir-store = ~/mail/%s", acc.name)
+	writefln(h, "default = %s", acc.inbox or "Inbox")
+	writefln(h, "copy-to = Sent")
 
 	if acc.smtps then
-		h:write(format("outgoing = %s\n", "smtps://" .. acc.smtps))
+		writefln(h, "outgoing = %s", "smtps://" .. acc.smtps)
 	else
-		h:write(format("outgoing = %s\n", "smtp://" .. acc.smtp))
+		writefln(h, "outgoing = %s", "smtp://" .. acc.smtp)
 	end
 
-	h:write(format("outgoing-cred-cmd = %q\n", format(acc.passcmd, acc.name)))
+	writefln(h, "outgoing-cred-cmd = %q", format(acc.passcmd, acc.name))
 	
+	writefln(h, "# END %s", acc.name)
+	writefln(h, "")
+end
 
-	h:write(format("# END %s\n", acc.name))
-	h:write("\n")
+local function write_notmuch(h, acc)
+	writefln(h, [=[
+[database]
+path=%s
+[user]
+[new]
+tags=unread;inbox;
+ignore=.mbsyncstate;.uidvalidity
+[search]
+exclude_tags=deleted;spam;
+[maildir]
+synchronize_flags=true
+]=], "mail/" .. acc.name)
 end
 
 -- Read configuration file
@@ -106,12 +125,17 @@ if acc.name and #acc.name > 0 then
 end
 
 -- Open configuration files
+
 local mbfd = io.open(cfg_mbsync, "w")
 local aefd = io.open(cfg_aerc, "w")
 
 for _, v in pairs(accs) do
+	os.execute("mkdir -pv \"" .. cfg_base .. "/notmuch/" .. v.name .. "\"")
+	local nm = assert(io.open(cfg_base .. "/notmuch/" .. v.name .. "/config", "w"))
 	write_mbsync(mbfd, v)
 	write_aerc(aefd, v)
+	write_notmuch(nm, v)
+	nm:close()
 end
 
 mbfd:close()

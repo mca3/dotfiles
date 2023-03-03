@@ -124,7 +124,7 @@ int XCloseDisplay(Display*);
 unsigned int sleep(unsigned int seconds);
 ]]
 
-local xlib = ffi.load("X11")
+local xlib = ffi.load("libX11.so.6")
 
 -- Initialize the display
 local dpy = xlib.XOpenDisplay(nil)
