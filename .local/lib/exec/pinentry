@@ -1,0 +1,22 @@
+#!/bin/sh
+# This is far from an ideal implementation but I plan to rectify it eventually.
+
+printf 'OK Pleased to meet you\n'
+
+while read -r line; do
+	case "$line" in
+		BYE*) exit ;;
+		SETDESC*)
+			DESC="$(printf '%s\n' "${line#* }" | sed 's/%0A/\n/g;s/%22/"/g')"
+			notify-send "Pinentry" "$DESC"
+			;;
+		SETPROMPT*)
+			PROMPT="${line#* }"
+			;;
+		GETPIN*)
+			printf 'D %s\n' "$(DISPLAY=:0 dmenu -c -bw 24 -P -p "${PROMPT:-Passphrase: }" </dev/null)"
+			;;
+	esac
+
+	printf 'OK\n'
+done

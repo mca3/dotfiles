@@ -14,14 +14,18 @@ function M.escape(arg)
 	return s
 end
 
-function M.execute(...)
+function M.cmdline(...)
 	local buf = {}
 
 	for i=1,select("#", ...) do
 		buf[i] = M.escape(select(i, ...))
 	end
 
-	return os.execute(table.concat(buf, " "))
+	return table.concat(buf, " ")
+end
+
+function M.execute(...)
+	return os.execute(M.cmdline(...))
 end
 
 return M

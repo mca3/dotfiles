@@ -2,7 +2,8 @@
 
 if not jit then
 	-- Lame implementation using largely untested code
-	local sh = require("sh")
+	local sh = require("mca.sh")
+	local unpack = table.unpack or unpack
 
 	return {
 		send = function(title, message, id)
@@ -20,7 +21,7 @@ if not jit then
 			end
 			cmd[#cmd+1] = message
 
-			sh.execute(table.unpack(cmd))
+			sh.execute(unpack(cmd))
 		end
 	}
 end
