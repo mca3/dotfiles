@@ -1,0 +1,21 @@
+#!/bin/sh
+# Manage file locks
+
+_lockname=""
+
+_unlock() {
+	flock -u 3
+	exec 3<&- # close fd
+	rm ~/.cache/"$_lockname".lock
+}
+
+# lock locks a file in ~/.cache named "$1".lock.
+# If lock fails to lock the file, a non-zero exit status is returned.
+lock() {
+	_lockname="$1"
+
+	# Have the lock on fd 3
+	exec 3>~/.cache/"$1".lock
+	flock -xn 3
+	trap '_unlock' INT QUIT TERM EXIT
+}

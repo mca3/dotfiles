@@ -8,5 +8,27 @@ menu() {
 		_="menu"
 	fi
 
-	"$DMENU" -p "$_" -l 5
+	"$DMENU" -bw 4 -c -p "$_" -l 5
+}
+
+_stripval() {
+	while read -r line; do
+		printf '%s\n' "${line%%	*}"
+	done
+}
+
+_matchval() {
+	while read -r line; do
+		_="${line%%	*}"
+		if [ "$_" = "$1" ]; then
+			printf '%s\n' "${line##*	}"
+			return
+		fi
+	done
+	return 1
+}
+
+choiceval() {
+	_="$(printf '%s\n' "$2" | _stripval | menu "$1")"
+	printf '%s\n' "$2" | _matchval "$_"
 }

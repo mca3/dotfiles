@@ -1,0 +1,14 @@
+#!/bin/sh -e
+
+. ~/.local/lib/sh/menu
+. ~/.local/lib/sh/lock
+
+lock "powermenu"
+
+e="$(choiceval "Power options" "Lock	slock
+Sleep	loginctl suspend
+Power off	loginctl poweroff
+Restart	loginctl reboot
+Log out	pkill dwm")"
+
+exec $e
