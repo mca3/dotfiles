@@ -6,9 +6,11 @@ menu() {
 	_="$1"
 	if [ -z "$_" ]; then
 		_="menu"
+	else
+		shift
 	fi
 
-	"$DMENU" -bw 4 -c -p "$_" -l 5
+	"$DMENU" -bw 4 -c -p "$_" -l 5 "$@"
 }
 
 _stripval() {
@@ -29,6 +31,6 @@ _matchval() {
 }
 
 choiceval() {
-	_="$(printf '%s\n' "$2" | _stripval | menu "$1")"
+	_="$(printf '%s\n' "$2" | _stripval | menu "$1" -F)"
 	printf '%s\n' "$2" | _matchval "$_"
 }

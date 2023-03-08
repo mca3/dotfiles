@@ -5,7 +5,7 @@
 
 lock "powermenu"
 
-e="$(choiceval "Power options" "Lock	slock
+e="$(choiceval "Power options" "Lock	loginctl lock-session
 Sleep	loginctl suspend
 Power off	loginctl poweroff
 Restart	loginctl reboot
