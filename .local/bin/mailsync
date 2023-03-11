@@ -11,3 +11,19 @@ for acc in $(awk '/^Channel/ { print $2 }' ~/.mbsyncrc); do
 done
 
 wait
+
+# Determine new mail
+count=0
+for _ in ~/mail/*/[Ii][Nn][Bb][Oo][Xx]/new/*; do
+	# For will always run at least once even if we don't want it to.
+	# In the case we don't want it to, the glob expression will be returned
+	# and this will never be returned in any normal use case.
+	if [ "$_" = ~/"mail/*/[Ii][Nn][Bb][Oo][Xx]/new/*" ]; then
+		return # Nothing to do
+	fi
+	count=$((count + 1))
+done
+
+if [ "$count" -gt 0 ]; then
+	notify-send "Mail" "$count new mail."
+fi

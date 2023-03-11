@@ -1,0 +1,157 @@
+#!/bin/sh
+# Switch Git identities from a predefined selection.
+
+XDG_CONFIG_DIR="${XDG_CONFIG_DIR:-"$HOME/.config"}"
+IDENTFILE="${IDENTFILE:-"$XDG_CONFIG_DIR/idents"}"
+
+if [ "$#" -eq 0 ]; then
+	cat >&2 <<EOF
+git-ident manages git identities and provides an interface to switch between
+them quickly and easily.
+
+Usage:
+	git-ident
+	git-ident add <id> <user.name> <user.email>
+	git-ident del <id>
+	git-ident list
+	git-ident switch <id>
+	git-ident now
+
+Adding an identity is easy with the "add" subcommand of git-ident.
+Supply an identifier, and then optionally the name and email, which will be
+otherwise pulled from the current configuration, and a new entry in the
+identity list will be created.
+
+The identifier may be used in order to delete the identity ("git-ident del
+<id>") or to switch to it ("git-ident switch <id>").
+
+The identity file is stored at $IDENTFILE.
+EOF
+	exit 1
+fi
+
+# find_id searches for the name and email of an ID.
+#
+# The name and email will be in the environment variables $name and $email if
+# found.
+find_id() {
+	if [ ! -e "$IDENTFILE" ]; then
+		return 1
+	fi
+
+	while IFS="	" read -r id name email; do
+		if [ "$1" = "$id" ]; then
+			return 0
+		fi
+	done < "$IDENTFILE"
+
+	# Fail. These variables contain trash.
+	unset id name email
+	return 1
+}
+
+add() {
+	if [ -z "$1" ]; then
+		printf 'Usage: git-ident add <id> [<name> <email>]\n' >&2
+		exit 1
+	fi
+
+	# Find existing match
+	if find_id "$1"; then
+		printf 'ID already exists in the identity list!\n\n' >&2
+		printf 'Name: %s\n' "$name"
+		printf 'E-mail: %s\n' "$email"
+		exit 1
+	fi
+
+	name="$2"
+	email="$3"
+
+	if [ -z "$name" ]; then
+		name="$(git config user.name)"
+	fi
+
+	if [ -z "$email" ]; then
+		email="$(git config user.email)"
+	fi
+
+	if [ -z "$name" ] || [ -z "$email" ]; then
+		printf 'Failed to automatically find name and/or email values from the current git repository.\nPlease specify both the name and email to use for this identity.\n'
+		exit 1
+	fi
+
+	# Append to identity file.
+	# Identity file will be created if it doesn't exist already.
+	printf '%s	%s	%s\n' "$1" "$name" "$email" >> "$IDENTFILE"
+}
+
+del() {
+	if [ -z "$1" ]; then
+		printf 'Usage: git-ident del <id>\n' >&2
+		exit 1
+	fi
+
+	if ! find_id "$1"; then
+		printf 'Identity does not exist.\nRun "git-ident list" to see current identities.\n' >&2
+		exit 1
+	fi
+
+	# This assumes that the ID doesn't contain any funky characters
+	# (forward slash, special POSIX regex characters), and I don't do input
+	# validation so it very well can.
+	sed -i "/^$1/d" "$IDENTFILE"
+}
+
+list() {
+	if [ ! -e "$IDENTFILE" ]; then
+		exit 0
+	fi
+
+	cat "$IDENTFILE"
+}
+
+switch() {
+	if [ -z "$1" ]; then
+		printf 'Usage: git-ident switch <id>\n' >&2
+		exit 1
+	fi
+
+	if ! find_id "$1"; then
+		printf 'Identity does not exist.\nRun "git-ident list" to see current identities.\n' >&2
+		exit 1
+	fi
+
+	git config user.name "$name"
+	git config user.email "$email"
+}
+
+now() {
+	name="$(git config user.name)"
+	email="$(git config user.email)"
+
+	if [ -z "$name" ]; then
+		printf 'Name is not set.\n'
+	else
+		printf 'Name: %s\n' "$name"
+	fi
+
+	if [ -z "$email" ]; then
+		printf 'Email is not set.\n'
+	else
+		printf 'Email: %s\n' "$email"
+	fi
+}
+
+cmd="$1"
+shift
+
+case "$cmd" in
+	a*)	cmd="add" ;;
+	d*)	cmd="del" ;;
+	l*)	cmd="list" ;;
+	n*)	cmd="now" ;;
+	s*)	cmd="switch" ;;
+	*)	printf 'Unknown subcommand "%s".\n' "$cmd" >&2 && exit 1 ;;
+esac
+
+"$cmd" "$@"

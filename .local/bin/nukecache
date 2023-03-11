@@ -1,0 +1,22 @@
+#!/bin/sh
+
+cat <<EOF
+Clearing cache.
+Close all applications, press enter to continue.
+EOF
+
+read -r _
+
+go clean -cache
+
+rm -rf ~/.cache/mozilla
+
+for i in ~/.mozilla/firefox/*; do
+	if [ ! -d "$i" ]; then
+		continue
+	fi
+
+	for j in "$i"/storage/default/http*+++*; do
+		rm -rf "$j"
+	done
+done
